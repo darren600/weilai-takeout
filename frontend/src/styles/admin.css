@@ -1,0 +1,76 @@
+/**
+ * 管理端通用样式（橙白企业级）。
+ * 统一页面标题、卡片、工具栏、表格、分页；主色沿用全局暖橙（theme.css 已覆盖 Element Plus 主色）。
+ */
+.admin-page-title {
+  margin: 0 0 16px;
+  font-size: 19px;
+  font-weight: 700;
+  color: #1f2733;
+}
+
+/* 统一卡片：白底、圆角 12、轻阴影、铺满 */
+.admin-card {
+  width: 100%;
+  background: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+.admin-card + .admin-card {
+  margin-top: 16px;
+}
+
+/* 工具栏：统一 12px 间距、可换行 */
+.admin-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+/* 分页右对齐 */
+.admin-pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+/* 表格：表头浅灰底、行高舒适 */
+.admin-table {
+  width: 100%;
+  font-size: 13px;
+}
+.admin-table th.el-table__cell {
+  background: #fafafa !important;
+  color: #5a6572;
+  font-weight: 600;
+}
+.admin-table .el-table__cell {
+  padding: 10px 0;
+}
+
+/* 表格内商品缩略图 */
+.admin-thumb {
+  width: 46px;
+  height: 46px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: #f5f7fa;
+  vertical-align: middle;
+}
+
+/* 状态 Tab 角标 */
+.status-tab-badge {
+  margin-left: 4px;
+}
+
+/* 保证页面内容区（含图表行）撑满，无右侧空缺 */
+.admin-content > div {
+  width: 100%;
+}
+.admin-content .el-row {
+  width: 100%;
+}

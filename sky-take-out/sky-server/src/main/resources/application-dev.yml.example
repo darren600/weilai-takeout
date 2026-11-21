@@ -1,0 +1,26 @@
+# 开发环境配置模板
+# 使用方法：复制本文件为 application-dev.yml，把 <在此填入...> 替换为自己的真实值
+# 真实 application-dev.yml 已在 .gitignore 中排除，不会上传到仓库
+# 注意：保持以下层级结构不变（sky.datasource / sky.alioss / sky.redis / sky.wechat）
+
+sky:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    host: localhost
+    port: 3306
+    database: sky_take_out
+    username: root
+    password: <在此填入数据库密码>
+  alioss:
+    endpoint: oss-cn-beijing.aliyuncs.com
+    access-key-id: <在此填入阿里云 OSS AccessKey ID>
+    access-key-secret: <在此填入阿里云 OSS AccessKey Secret>
+    bucket-name: <在此填入 OSS Bucket 名称>
+  redis:
+    host: localhost
+    port: 6379
+    password: <在此填入 Redis 密码>
+    database: 10
+  wechat:
+    appid: <在此填入微信小程序 AppID>
+    secret: <在此填入微信小程序 AppSecret>

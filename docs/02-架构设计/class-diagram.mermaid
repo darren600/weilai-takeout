@@ -1,0 +1,114 @@
+classDiagram
+    class Result~T~ {
+        -Integer code
+        -String msg
+        -T data
+        +success() Result~T~
+        +success(T object) Result~T~
+        +error(String msg) Result~T~
+    }
+    note for Result "【不变】code=1成功/0失败，全端统一"
+
+    class PageResult {
+        -long total
+        -List records
+    }
+    note for PageResult "【不变】Controller 组装逻辑禁改；getResult→getRecords 仅内部换源"
+
+    class JwtProperties {
+        -String adminSecretKey
+        -Long adminTtl
+        -String adminTokenName
+        -String userSecretKey
+        -Long userTtl
+        -String userTokenName
+    }
+    note for JwtProperties "【不变】itcast/itheima；token/authentication；两个ttl"
+
+    class JwtUtil {
+        +createJWT(String secret, long ttl, Map claims) String
+        +parseJWT(String secret, String token) Claims
+        -keyOf(String secret) SecretKey
+    }
+    note for JwtUtil "【重写】API 换 0.11.5；内部 keyOf 补 32 字节；claims 契约不变"
+
+    class BaseContext {
+        -ThreadLocal~Long~ CURRENT_ID
+        +setCurrentId(Long id) void
+        +getCurrentId() Long
+        +remove() void
+    }
+    note for BaseContext "【不变】ThreadLocal 隔离，拦截器写入"
+
+    class JwtTokenAdminInterceptor {
+        -JwtProperties jwtProperties
+        +preHandle(req, resp, handler) boolean
+    }
+    class JwtTokenUserInterceptor {
+        -JwtProperties jwtProperties
+        +preHandle(req, resp, handler) boolean
+    }
+    note for JwtTokenAdminInterceptor "【仅改import】javax→jakarta；header=token；claims=empId"
+    note for JwtTokenUserInterceptor "【仅改import】javax→jakarta；header=authentication；claims=userId"
+
+    class AutoFileAspect {
+        +autoFill(JoinPoint jp) void
+    }
+    class AutoFIll {
+        <<annotation>>
+        -OperationType value
+    }
+    note for AutoFileAspect "【不变】保留 AOP 填充；不注册 MetaObjectHandler"
+
+    class Entity {
+        <<interface>>
+    }
+    class Employee
+    class User
+    class Dish
+    class Setmeal
+    class Orders
+    class AddressBook
+    Entity <|.. Employee
+    Entity <|.. User
+    Entity <|.. Dish
+    Entity <|.. Setmeal
+    Entity <|.. Orders
+    Entity <|.. AddressBook
+    note for Entity "【不变】entity/dto/vo 全部字段不动；DDL 列名沿用原库"
+
+    class UserMpMapper {
+        <<interface>>
+    }
+    note for UserMpMapper "【新增】extends BaseMapper<User>，仅 mockLogin 用 LambdaQueryWrapper"
+
+    class Mapper {
+        <<interface>>
+    }
+    note for Mapper "【不变】11个既有 Mapper 不加 extends BaseMapper（坑A）；XML 仅分页加 dto. 前缀"
+
+    class BaseMapper~T~ {
+        <<interface>>
+        +selectList(Wrapper) List~T~
+        +insert(T) int
+    }
+    UserMpMapper --|> BaseMapper
+
+    class MybatisPlusConfig {
+        +mybatisPlusInterceptor() MybatisPlusInterceptor
+    }
+    note for MybatisPlusConfig "【新增】唯一分页插件 PaginationInnerInterceptor(MYSQL)"
+
+    class Controller {
+        <<interface>>
+    }
+    class Service
+    Controller --> Service : 调用
+    Service --> Mapper : 持久化
+    Service --> JwtUtil : 登录签发
+    Service --> AutoFileAspect : AOP 织入公共字段
+    JwtTokenAdminInterceptor --> BaseContext : 写 empId
+    JwtTokenUserInterceptor --> BaseContext : 写 userId
+    MybatisPlusConfig ..> Mapper : 分页拦截
+    Result <.. Controller : 统一封装
+    PageResult <.. Controller : 分页封装

@@ -1,0 +1,71 @@
+server:
+  port: 8080
+
+spring:
+  profiles:
+    active: dev
+  main:
+    allow-circular-references: true
+  datasource:
+    # Boot3 兼容：druid-spring-boot-starter 1.2.x 只提供旧版 spring.factories，
+    # 在 Spring Boot 3.2 下自动配置不生效，spring.datasource.druid.* 无法识别。
+    # 改用 Boot 原生的 spring.datasource.* 标准配置（连接参数不变），保证 url 能被加载。
+    driver-class-name: ${sky.datasource.driver-class-name}
+    url: jdbc:mysql://${sky.datasource.host}:${sky.datasource.port}/${sky.datasource.database}?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${sky.datasource.username}
+    password: ${sky.datasource.password}
+  # Boot 3.2 起 Redis 配置前缀由 spring.redis.* 迁移为 spring.data.redis.*
+  data:
+    redis:
+      host: ${sky.redis.host}
+      port: ${sky.redis.port}
+      password: ${sky.redis.password}
+      database: ${sky.redis.database}
+
+# 配置前缀由 mybatis.* 迁移为 mybatis-plus.*；mapper-locations 保持原值，11 个 XML 原样加载
+mybatis-plus:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.sky.entity
+  configuration:
+    # 开启驼峰命名：下划线列 <-> camelCase 实体，DDL 零改动的关键
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      # 主键策略设为 auto，禁用 MP 默认雪花 ID，与原库 AUTO_INCREMENT 一致
+      id-type: auto
+      # 注意：不配置 logic-delete-field —— 原库无 deleted 列，开启会给所有 SQL 追加 WHERE deleted=0 报错
+      # 注意：不注册 MetaObjectHandler —— 保留现有 AOP 填充，避免 createTime/updateTime 被双写覆盖
+
+logging:
+  level:
+    com:
+      sky:
+        mapper: debug
+        service: info
+        controller: info
+
+sky:
+  jwt:
+    # 设置jwt签名加密时使用的秘钥
+    admin-secret-key: itcast
+    # 设置jwt过期时间
+    admin-ttl: 72000000000
+    # 设置前端传递过来的令牌名称
+    admin-token-name: token
+
+    # 设置jwt签名加密时使用的秘钥
+    user-secret-key: itheima
+    # 设置jwt过期时间
+    user-ttl: 72000000000
+    # 设置前端传递过来的令牌名称
+    user-token-name: authentication
+
+    #阿里云OSS
+  alioss:
+    endpoint: ${sky.alioss.endpoint}
+    bucket-name: ${sky.alioss.bucket-name}
+    access-key-id: ${sky.alioss.access-key-id}
+    access-key-secret: ${sky.alioss.access-key-secret}
+  wechat:
+    appid: ${sky.wechat.appid}
+    secret: ${sky.wechat.secret}

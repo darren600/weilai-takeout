@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+      【升级说明】Spring Boot 2.7.3 -> 3.2.5
+      Boot 3 是Jakarta EE 9 基线：所有 javax.servlet / javax.validation 必须改成 jakarta.*。
+      Boot 3.2.5 是 3.2.x 稳态版本，资料最多，适合入门者排障。
+    -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.2.5</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.sky</groupId>
+    <artifactId>sky-take-out</artifactId>
+    <packaging>pom</packaging>
+    <version>1.0-SNAPSHOT</version>
+    <modules>
+        <module>sky-common</module>
+        <module>sky-pojo</module>
+        <module>sky-server</module>
+    </modules>
+
+    <properties>
+        <!-- JDK 17：Boot 3 的最低门槛 -->
+        <java.version>17</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <!--
+          Lombok 1.18.20 在 JDK17 下注解处理器会报 IllegalAccessError。
+          1.18.36 兼容 JDK8~JDK25（本机为 JDK25，用它可顺利完成编译验证）。
+        -->
+        <lombok>1.18.36</lombok>
+
+        <fastjson>1.2.76</fastjson>
+        <commons.lang>2.6</commons.lang>
+        <!-- Boot3 兼容线：druid 1.2.1 的监控 Servlet 依赖 javax.servlet，Boot3 会 NoClassDefFoundError -->
+        <druid>1.2.21</druid>
+        <aliyun.sdk.oss>3.10.2</aliyun.sdk.oss>
+        <aspectj>1.9.22</aspectj>
+        <poi>3.16</poi>
+
+        <!-- 升级/新增坐标版本，父 pom 统一管理 -->
+        <mybatis-plus>3.5.5</mybatis-plus>
+        <jjwt>0.11.5</jjwt>
+        <springdoc>2.3.0</springdoc>
+        <swagger.annotations>2.2.15</swagger.annotations>
+        <mysql.connector>8.0.33</mysql.connector>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- MyBatis-Plus：替换原生 mybatis starter，保留全部 XML -->
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-boot-starter</artifactId>
+                <version>${mybatis-plus}</version>
+            </dependency>
+
+            <!--
+              【关键兼容修复】MP 3.5.5 默认传递 mybatis-spring 2.1.2，
+              它给 factoryBeanObjectType 塞入 String，与 Spring Boot 3.2 的
+              Spring 6.1 不兼容，启动报 "Invalid value type for attribute
+              'factoryBeanObjectType': java.lang.String"。
+              显式锁定 mybatis-spring 3.0.3（Spring 6 兼容线）覆盖之，
+              MP 版本仍保持 3.5.5 不变（符合架构版本约束）。
+            -->
+            <dependency>
+                <groupId>org.mybatis</groupId>
+                <artifactId>mybatis-spring</artifactId>
+                <version>3.0.3</version>
+            </dependency>
+
+            <!--
+              Spring Boot 3 已不再管理 mysql:mysql-connector-java 的版本，
+              这里显式锁定 8.0.33（驱动类名 com.mysql.cj.jdbc.Driver 不变）。
+            -->
+            <dependency>
+                <groupId>mysql</groupId>
+                <artifactId>mysql-connector-java</artifactId>
+                <version>${mysql.connector}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.alibaba</groupId>
+                <artifactId>fastjson</artifactId>
+                <version>${fastjson}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>commons-lang</groupId>
+                <artifactId>commons-lang</artifactId>
+                <version>${commons.lang}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.alibaba</groupId>
+                <artifactId>druid-spring-boot-starter</artifactId>
+                <version>${druid}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.aspectj</groupId>
+                <artifactId>aspectjrt</artifactId>
+                <version>${aspectj}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.aspectj</groupId>
+                <artifactId>aspectjweaver</artifactId>
+                <version>${aspectj}</version>
+            </dependency>
+
+            <!--
+              JJWT 0.11.5 三件套：
+              api 编译期可见；impl/jackson 运行时实现，scope=runtime。
+              原 0.9.1 依赖 javax.xml.bind.DatatypeConverter，JDK17 已移除 JAXB，必须替换。
+            -->
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-api</artifactId>
+                <version>${jjwt}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-impl</artifactId>
+                <version>${jjwt}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-jackson</artifactId>
+                <version>${jjwt}</version>
+            </dependency>
+
+            <!-- SpringDoc OpenAPI 3：替换 Springfox / Knife4j -->
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+                <version>${springdoc}</version>
+            </dependency>
+
+            <!--
+              DTO/VO 上的 @Schema 注解来自 swagger-core，
+              sky-pojo 模块独立编译时需要显式拿到该注解包。
+            -->
+            <dependency>
+                <groupId>io.swagger.core.v3</groupId>
+                <artifactId>swagger-annotations-jakarta</artifactId>
+                <version>${swagger.annotations}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.aliyun.oss</groupId>
+                <artifactId>aliyun-sdk-oss</artifactId>
+                <version>${aliyun.sdk.oss}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.poi</groupId>
+                <artifactId>poi</artifactId>
+                <version>${poi}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.poi</groupId>
+                <artifactId>poi-ooxml</artifactId>
+                <version>${poi}</version>
+            </dependency>
+
+            <!--
+              历史遗留的微信支付 SDK：本轮不调用、不新增、不删除（避免无关改动）。
+            -->
+            <dependency>
+                <groupId>com.github.wechatpay-apiv3</groupId>
+                <artifactId>wechatpay-apache-httpclient</artifactId>
+                <version>0.4.8</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+</project>

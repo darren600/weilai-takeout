@@ -1,0 +1,23 @@
+/**
+ * 全局基础重置。
+ *
+ * <p>原先这里是 Vite 脚手架默认样式，其中 `#app { max-width:1280px; display:grid;
+ * grid-template-columns:1fr 1fr }` 与 `body { display:flex; place-items:center }`
+ * 会把分栏页挤成约 600px 宽的两列，导致登录页无法左右各占半屏（UI 返工问题根因）。
+ * 现替换为仅保留必要盒模型与高度重置的最小实现，布局交给各页面自行控制。</p>
+ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+}

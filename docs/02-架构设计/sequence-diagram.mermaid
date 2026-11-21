@@ -1,0 +1,127 @@
+%% 味来（Weilai）关键链路时序图
+%% 包含：① 统一门户鉴权分流 ② 用户下单 ③ 管理端接单 ④ 缓存读写
+
+%% ========== ① 统一门户鉴权流 ==========
+sequenceDiagram
+    autonumber
+    actor U as 访客
+    participant L as Login.vue
+    participant R as router 守卫
+    participant A as adminHttp
+    participant UH as userHttp
+    participant AI as JwtTokenAdminInterceptor
+    participant UI as JwtTokenUserInterceptor
+    participant BE as 后端 Controller
+
+    U->>L: 打开 /login（默认管理员 Tab）
+    alt 管理员登录
+        U->>L: 输入 admin / 123456
+        L->>A: POST /admin/employee/login（无 token）
+        A->>BE: 转发
+        BE-->>A: Result{code:1,data:{token}}（claims: empId, secret: itcast）
+        A-->>L: data.token
+        L->>L: localStorage.wl_admin_token = token
+        L->>R: router.push('/admin/dashboard')
+        R->>R: 校验 wl_admin_token 存在 → 放行
+        R-->>U: 进入管理端
+        Note over A,AI: 后续管理端请求头 token=... 由 AI 校验并写 BaseContext
+    else 用户登录
+        U->>L: 切到用户 Tab（清空表单），输入手机号
+        L->>UH: POST /user/user/mockLogin（无 token）
+        UH->>BE: 转发
+        BE->>BE: UserMpMapper + LambdaQueryWrapper 按 phone 查用户
+        alt 手机号存在
+            BE-->>UH: Result{code:1,data:{id,token}}（claims: userId, secret: itheima）
+            UH-->>L: data.token
+            L->>L: localStorage.wl_user_token = token
+            L->>R: router.push('/user/home')
+            R-->>U: 进入用户端
+            Note over UH,UI: 后续用户端请求头 authentication=... 由 UI 校验
+        else 手机号不存在
+            BE-->>UH: Result{code:0,msg:"手机号未注册"}
+            UH-->>L: 拦截器 ElMessage.error，禁止跳转
+        end
+    end
+
+%% ========== ② 用户下单 ==========
+sequenceDiagram
+    autonumber
+    actor U as 用户
+    participant H as /user/home
+    participant D as 菜品详情弹层
+    participant O as /user/order/confirm
+    participant API as userHttp
+    participant S as OrderServiceImpl
+    participant M as Mapper(XML)
+    participant DB as MySQL
+    participant WS as WebSocket
+
+    U->>H: 进入点餐首页
+    H->>API: GET /user/shop/status + /category/list + /dish/list + /setmeal/list
+    API-->>H: 起售商品列表（图片失效走 onerror 占位图）
+    U->>D: 点击菜品 → 选口味 + 数量
+    D->>API: POST /user/shoppingCart/add
+    API->>S: add(ShoppingCart)
+    S->>DB: 查重（同菜品同口味）→ 存在则数量累加，否则 insert
+    S-->>D: Result.success
+    D-->>H: 底部购物车角标 +1
+    U->>O: 购物车勾选后进入确认订单（GET /addressBook/default）
+    U->>O: 选地址 + 配送时间 + 餐具 + 备注 → 提交
+    O->>API: POST /user/order/submit
+    API->>S: submit(OrdersSubmitDTO)
+    S->>M: insert(Orders) + insertBatch(OrderDetail) + clean(ShoppingCart)
+    M->>DB: 事务写入（快照固化；status=2 待接单；无支付）
+    S-->>O: Result.success(orderId)
+    O-->>U: 跳 /user/order/list，展示订单号
+    S->>WS: 来单提醒推送管理端铃铛
+
+%% ========== ③ 管理端接单 ==========
+sequenceDiagram
+    autonumber
+    actor A as 管理员
+    participant OL as /admin/order
+    participant AH as adminHttp
+    participant S as OrderServiceImpl
+    participant DB as MySQL
+    participant WS as WebSocket
+    participant U as 用户端订单详情
+
+    Note over A,OL: WebSocket 来单提醒 → 顶栏铃铛角标刷新
+    A->>OL: 打开"待接单"Tab
+    OL->>AH: GET /admin/order/conditionSearch?status=2
+    AH->>S: conditionSearch(dto)
+    S->>DB: Page 分页查询（MP 分页插件唯一生效，records 不重复）
+    S-->>OL: PageResult{total,records}
+    A->>OL: 点击"接单" + 二次确认
+    OL->>AH: PUT /admin/order/confirm
+    AH->>S: confirm(OrderConfirmDTO)
+    S->>DB: status 2→3（已接单）
+    S->>WS: 推送状态变更
+    WS-->>U: 用户端订单时间轴刷新
+    A->>OL: 点击"派送" → PUT /admin/order/delivery/{id}
+    OL-->>U: status 3→4（派送中），时间轴同步
+    A->>OL: 点击"完成" → PUT /admin/order/complete/{id}
+    OL-->>U: status 4→5（已完成）
+
+%% ========== ④ 缓存读写 ==========
+sequenceDiagram
+    autonumber
+    participant UC as UserController
+    participant DS as DishServiceImpl
+    participant CACHE as Spring Cache (Redis)
+    participant MP as DishMapper(XML)
+    participant DB as MySQL
+
+    UC->>DS: list(dish) 第 1 次请求
+    DS->>CACHE: @Cacheable 查 key=dish_list_...
+    CACHE-->>DS: 未命中
+    DS->>MP: list(Dish) 条件查询
+    MP->>DB: select * from dish where status=1 ...
+    DB-->>DS: 起售菜品
+    DS->>CACHE: 写入缓存
+    DS-->>UC: Result.success(list)
+    Note over UC,DB: 管理端新增/改价/停售菜品 → @CacheEvict 清理 key
+    UC->>DS: list(dish) 第 2 次请求
+    DS->>CACHE: @Cacheable 查 key
+    CACHE-->>DS: 命中 → 直接返回，不打 DB
+    DS-->>UC: Result.success(list)（验收：二次请求走缓存）

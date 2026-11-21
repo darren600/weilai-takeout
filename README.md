@@ -5,7 +5,7 @@
   <img src="https://img.shields.io/badge/Vue-3-brightgreen" alt="Vue">
   <img src="https://img.shields.io/badge/MySQL-8-brightgreen" alt="MySQL">
   <img src="https://img.shields.io/badge/Redis-brightgreen" alt="Redis">
-  <img src="https://img.shields.io/badge/License-MIT-blue" alt="License">
+  <img src="https://img.shields.io/badge/License-Mulan%20PSL%202.0-blue" alt="License">
 </p>
 
 一个基于 SpringBoot 3 + Vue 3 的前后端分离外卖点餐系统，包含用户端 H5 与管理端后台。项目由苍穹外卖脚手架二次开发而来，完成了界面重设计、移动端适配、数据重建与多项缺陷修复。
@@ -73,8 +73,8 @@ WeiLai/
 # 创建数据库
 CREATE DATABASE sky_take_out CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
-# 导入 SQL 脚本
-mysql -u root -p sky_take_out < docs/sql/weilai_take_out_ddl.sql
+# 导入 SQL 脚本（注意路径在 sky-take-out/docs/ 下）
+mysql -u root -p sky_take_out < sky-take-out/docs/sql/weilai_take_out_ddl.sql
 ```
 
 ## 配置说明
@@ -90,31 +90,33 @@ cp application-dev.yml.example application-dev.yml
 
 ### 关键配置项
 
+复制模板后，编辑 `application-dev.yml`，填入你自己的值。**保持以下层级结构不变**：
+
 ```yaml
-spring:
-  datasource:
-    url: jdbc:mysql://localhost:3306/sky_take_out
-    username: root
-    password: your_password  # 修改为你的数据库密码
-
-  data:
-    redis:
-      host: localhost
-      password: your_redis_password  # 修改为你的 Redis 密码
-
 sky:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    host: localhost
+    port: 3306
+    database: sky_take_out
+    username: root
+    password: 你的数据库密码
   alioss:
-    endpoint: oss-cn-hangzhou.aliyuncs.com
-    accessKeyId: your_access_key
-    accessKeySecret: your_secret
-    bucketName: your_bucket
-
+    endpoint: oss-cn-beijing.aliyuncs.com
+    access-key-id: 你的AccessKey ID
+    access-key-secret: 你的AccessKey Secret
+    bucket-name: 你的Bucket名称
+  redis:
+    host: localhost
+    port: 6379
+    password: 你的Redis密码
+    database: 10
   wechat:
-    appid: your_appid
-    secret: your_secret
-    mchid: your_mchid
-    # ... 其他微信支付配置
+    appid: 你的小程序AppID
+    secret: 你的小程序AppSecret
 ```
+
+> 注意：键名用 kebab-case（如 `access-key-id`），不要写成驼峰 `accessKeyId`，否则配置不生效。
 
 ## 启动项目
 
@@ -154,8 +156,9 @@ npm run dev
 
 项目集成了 Swagger API 文档，启动后端服务后可访问：
 
-- 管理端 API：http://localhost:8080/swagger-ui/admin.html
-- 用户端 API：http://localhost:8080/swagger-ui/user.html
+- 接口文档首页：http://localhost:8080/swagger-ui/index.html
+
+打开后通过右上角下拉框切换「管理端接口」和「用户端接口」两个分组。
 
 ## 测试账号
 
@@ -182,4 +185,4 @@ npm run dev
 
 ## 许可证
 
-本项目基于 MIT 许可证开源，详见 [LICENSE](LICENSE) 文件,仅为参考的Demo学习项目
+本项目采用 [木兰宽松许可证 2.0（Mulan PSL v2）](LICENSE)，仅供学习参考的 Demo 项目。

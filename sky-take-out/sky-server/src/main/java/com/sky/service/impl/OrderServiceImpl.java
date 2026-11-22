@@ -18,6 +18,8 @@ import com.sky.mapper.OrderMapper;
 import com.sky.mapper.ShoppingCartMapper;
 import com.sky.result.PageResult;
 import com.sky.service.OrderService;
+import com.sky.service.StockService;
+import com.sky.utils.OrderNoGenerator;
 import com.sky.utils.WeChatPayUtil;
 import com.sky.vo.OrderStatisticsVO;
 import com.sky.vo.OrderSubmitVO;
@@ -55,6 +57,10 @@ public class OrderServiceImpl implements OrderService {
     private WeChatPayUtil weChatPayUtil;
     @Autowired
     private WebSocketServer webSocketServer;
+    @Autowired
+    private OrderNoGenerator orderNoGenerator;
+    @Autowired
+    private StockService stockService;
 
     /*
     * 用户提交订单
@@ -85,22 +91,41 @@ public class OrderServiceImpl implements OrderService {
         orders.setOrderTime(LocalDateTime.now());
         orders.setPayStatus(Orders.UN_PAID);
         orders.setStatus(Orders.PENDING_PAYMENT);
-        orders.setNumber(String.valueOf(System.currentTimeMillis()));
+        orders.setNumber(orderNoGenerator.nextNumber());
         orders.setPhone(addressBook.getPhone());
         orders.setConsignee(addressBook.getConsignee());
-        orderMapper.insert(orders);
+
+//  扣减库存（Redis Lua 原子扣减），DB 失败时补偿回滚
+        List<ShoppingCart> deducted = new ArrayList<>();
+        try {
+            for (ShoppingCart item : shoppingCartList) {
+                stockService.deduct(item.getDishId(), item.getSetmealId(), item.getNumber());
+                deducted.add(item);
+            }
+
+            orderMapper.insert(orders);
 
 //  3.向订单明细表插入n条数据
-        List<OrderDetail> orderDetailList = new ArrayList<>();
-        for (ShoppingCart shoppingCartItem : shoppingCartList) {
-            OrderDetail orderDetail = new OrderDetail();
-            BeanUtils.copyProperties(shoppingCartItem,orderDetail);
-            orderDetail.setOrderId(orders.getId());
-            orderDetailList.add(orderDetail);
-        }
-        orderDetailMapper.insertBatch(orderDetailList);
+            List<OrderDetail> orderDetailList = new ArrayList<>();
+            for (ShoppingCart shoppingCartItem : shoppingCartList) {
+                OrderDetail orderDetail = new OrderDetail();
+                BeanUtils.copyProperties(shoppingCartItem,orderDetail);
+                orderDetail.setOrderId(orders.getId());
+                orderDetailList.add(orderDetail);
+            }
+            orderDetailMapper.insertBatch(orderDetailList);
 //        4.清空当前用户的购物车
-        shoppingCartMapper.deleteShoppingCartByUserId(userId);
+            shoppingCartMapper.deleteShoppingCartByUserId(userId);
+        } catch (Exception e) {
+            for (ShoppingCart item : deducted) {
+                try {
+                    stockService.compensate(item.getDishId(), item.getSetmealId(), item.getNumber());
+                } catch (Exception compensateEx) {
+                    log.error("库存补偿失败: dishId={}, setmealId={}", item.getDishId(), item.getSetmealId(), compensateEx);
+                }
+            }
+            throw e;
+        }
 //          5.封装VO对象返回结果
         OrderSubmitVO orderSubmitVO = OrderSubmitVO.builder()
                 .id(orders.getId())

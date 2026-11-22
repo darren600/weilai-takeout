@@ -6,8 +6,8 @@
 
     <insert id="insert">
         insert into setmeal
-        (category_id, name, price, status, description, image, create_time, update_time, create_user, update_user)
-        values (#{categoryId}, #{name}, #{price}, #{status}, #{description}, #{image}, #{createTime}, #{updateTime},
+        (category_id, name, price, status, stock, description, image, create_time, update_time, create_user, update_user)
+        values (#{categoryId}, #{name}, #{price}, #{status}, IFNULL(#{stock}, 100), #{description}, #{image}, #{createTime}, #{updateTime},
                 #{createUser}, #{updateUser})
     </insert>
     <update id="update" useGeneratedKeys="true" parameterType="com.sky.entity.Setmeal" keyProperty="id">
@@ -24,6 +24,9 @@
             </if>
             <if test="status != null">
                 status = #{status},
+            </if>
+            <if test="stock != null">
+                stock = #{stock},
             </if>
             <if test="description != null">
                 description = #{description},
